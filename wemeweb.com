@@ -4,6 +4,42 @@ map $sent_http_content_type $expires {
     default                     off;
 }
 
+# Wildcard subdomains -> /var/www/<host>/current
+server {
+    listen 80;
+    server_name *.wemeweb.com;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+
+    server_name *.wemeweb.com;
+
+    root /var/www/$host/current;
+    index index.html;
+
+    ssl_certificate /etc/letsencrypt/live/wemeweb.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/wemeweb.com/privkey.pem;
+
+    error_log  /var/log/nginx/wemeweb.com/wildcard-error.log;
+    access_log /var/log/nginx/wemeweb.com/wildcard-access.log;
+
+    # Gzip
+    include /etc/nginx/includes/gzip.conf;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+}
+
 
 server {
     listen 80;
