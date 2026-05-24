@@ -212,6 +212,11 @@ server {
 
         # Set the address to Node.js, which `node:3000` is a service name and port from `docker-compose.yml`
         proxy_pass                          https://localhost:9443;
+
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
     }
 }
 
