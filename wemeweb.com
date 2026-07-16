@@ -92,7 +92,7 @@ server {
   }
 
   location /graphql {
-    proxy_pass https://43.209.185.102/graphql;
+    proxy_pass https://rura.wemeweb.com/graphql;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "Upgrade";
@@ -237,7 +237,7 @@ server {
 
     ssl_certificate /etc/letsencrypt/live/wemeweb.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/wemeweb.com/privkey.pem;
-
+		
     error_log  /var/log/nginx/wiz.shopping/error.log;
     access_log /var/log/nginx/wiz.shopping/access.log;
 
@@ -293,7 +293,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_pass https://proxy.wemeweb.com/graphql;
+        proxy_pass https://rura.wemeweb.com/graphql;
     }
 }
 
@@ -342,13 +342,14 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_pass https://proxy.wemeweb.com;
+        proxy_pass https://rura.wemeweb.com;
     }
 }
 
 # IGUpload
 server {
     listen 443 ssl;
+    listen [::]:443 ssl;
     http2 on;
     
     server_name igupload.wemeweb.com;
@@ -379,7 +380,7 @@ server {
     }
 
     location / {  
-        proxy_pass http://localhost:3001;
+        proxy_pass http://localhost:3003;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -407,15 +408,6 @@ server {
         #   proxy_cache_bypass $http_upgrade;
         #   proxy_ssl off;
         #   proxy_ssl_verify off;
-
-
-       
-          
-
-
-
-
-
 
       }
 
