@@ -262,41 +262,6 @@ server {
     }
 }
 
-# Wiz GraphQL API
-server {
-	listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
-
-    # Setup server name from env
-    server_name wiz-api.wemeweb.com;
-
-    root /var/www/wemeweb.com/;
-    index index.html;
-
-    # SSL
-    ssl_certificate /etc/letsencrypt/live/wemeweb.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/wemeweb.com/privkey.pem;
-
-    index index.php;
-    error_log  /var/log/nginx/api-error.log;
-    access_log /var/log/nginx/api-access.log;
-
-    # Gzip
-    include /etc/nginx/includes/gzip.conf;
-
-    # Allow NGINX can start without checking upstream available, set internal Docker DNS, cache only for 30s to resolve.
-    resolver 127.0.0.11 valid=30s;
-
-    location /graphql {
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_pass https://rura.wemeweb.com/graphql;
-    }
-}
-
 # Storage
 server {
 	listen 443 ssl;
