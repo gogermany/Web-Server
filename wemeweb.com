@@ -73,6 +73,7 @@ server {
   listen 443 ssl;
   http2 on;
   server_name api.wemeweb.com;
+  client_max_body_size 100M;
 
   # SSL
   ssl_certificate /etc/letsencrypt/live/wemeweb.com/fullchain.pem;
