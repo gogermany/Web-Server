@@ -4,6 +4,13 @@ map $sent_http_content_type $expires {
     default                     off;
 }
 
+# Shared DNS resolver and upstream hostname for rura proxy targets.
+resolver 1.1.1.1 8.8.8.8 valid=30s ipv6=off;
+resolver_timeout 5s;
+map $host $rura_upstream_host {
+    default rura.wemeweb.com;
+}
+
 # Wildcard subdomains -> /var/www/<host>/current
 server {
     listen 80;
@@ -93,7 +100,8 @@ server {
   }
 
   location /graphql {
-    proxy_pass https://rura.wemeweb.com/graphql;
+    proxy_pass https://$rura_upstream_host/graphql;
+    proxy_ssl_server_name on;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "Upgrade";
@@ -107,6 +115,7 @@ server {
     http2 on;
     
     server_name n8n.wemeweb.com;
+    client_max_body_size 50M;
 
     root /var/www/wemeweb.com/;
     index index.html;
@@ -160,11 +169,11 @@ server {
         #   proxy_ssl_verify off;
 
 
-        #   // allwo cors
-        #   add_header Access-Control-Allow-Origin *;
-        #   add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
-        #   add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
-        #   add_header Access-Control-Allow-Credentials true;
+        # # Allow cors
+        # add_header Access-Control-Allow-Origin *;
+        # add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
+        # add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+        # add_header Access-Control-Allow-Credentials true;
 
           
 
@@ -281,9 +290,6 @@ server {
     # Gzip
     include /etc/nginx/includes/gzip.conf;
 
-    # Allow NGINX can start without checking upstream available, set internal Docker DNS, cache only for 30s to resolve.
-    resolver 127.0.0.11 valid=30s;
-
     # Allow CORS for domain name
     if ($http_origin ~* "^(https?://)?(.*\.)?wemeweb\.com$") {
       set $cors "$http_origin";
@@ -308,7 +314,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_pass https://rura.wemeweb.com;
+        proxy_pass https://$rura_upstream_host;
+        proxy_ssl_server_name on;
     }
 }
 
