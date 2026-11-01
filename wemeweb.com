@@ -230,7 +230,6 @@ server {
     }
 }
 
-
 # Wiz Shopping
 server {
     listen 443 ssl;
@@ -316,6 +315,50 @@ server {
         proxy_set_header Connection "upgrade";
         proxy_pass https://$rura_upstream_host;
         proxy_ssl_server_name on;
+    }
+}
+
+# Dozzle
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+
+    server_name dozzle.wemeweb.com;
+
+    client_max_body_size 50m;
+
+    charset utf-8;
+
+    ssl_certificate /etc/letsencrypt/live/wemeweb.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/wemeweb.com/privkey.pem;
+
+    error_log  /var/log/nginx/dozzle.wemeweb.com/error.log;
+    access_log /var/log/nginx/dozzle.wemeweb.com/access.log;
+
+    # Gzip
+    include /etc/nginx/includes/gzip.conf;
+
+    
+
+    location / {  
+        expires $expires;
+
+        proxy_redirect                      off;
+        proxy_set_header Host               $host;
+        proxy_set_header X-Real-IP          $remote_addr;
+        proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto  $scheme;
+        proxy_read_timeout                  1m;
+        proxy_connect_timeout               1m;
+
+        # Set the address to service and port from `docker-compose.yml`
+        proxy_pass                          http://localhost:7788;
+
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
     }
 }
 
