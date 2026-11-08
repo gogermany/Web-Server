@@ -1,0 +1,3 @@
+scripts/security-scan/reports/
+site-agent/.env
+managed/.trash/

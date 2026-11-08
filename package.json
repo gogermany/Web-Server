@@ -1,0 +1,15 @@
+{
+  "name": "wemeweb-web-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NGINX configuration and ops scripts for the WeMeWeb PM2 Apps Server",
+  "type": "module",
+  "scripts": {
+    "subdomain": "node scripts/create-wmw-subdomain.js",
+    "site-agent": "node --env-file=site-agent/.env site-agent/server.js",
+    "test:site-agent": "node --test \"site-agent/tests/*.test.js\""
+  },
+  "engines": {
+    "node": ">=20.12"
+  }
+}

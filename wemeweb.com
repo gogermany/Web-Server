@@ -11,6 +11,9 @@ map $host $rura_upstream_host {
     default rura.wemeweb.com;
 }
 
+# Apps proxied to a local port: one generated file each, managed by the site agent (BackOffice > Sites > Apps)
+include /etc/nginx/sites-available/managed/*.conf;
+
 # Wildcard subdomains -> /var/www/<host>/current
 server {
     listen 80;
@@ -109,165 +112,34 @@ server {
   }
 }
 
-# n8n
+# Site agent (BackOffice -> manage *.wemeweb.com subdomains), see site-agent/README.md
 server {
     listen 443 ssl;
+    listen [::]:443 ssl;
     http2 on;
-    
-    server_name n8n.wemeweb.com;
-    client_max_body_size 50M;
 
-    root /var/www/wemeweb.com/;
-    index index.html;
+    server_name sites.wemeweb.com;
+
+    # Zip uploads; keep in step with MAX_UPLOAD_MB in site-agent/.env
+    client_max_body_size 100M;
 
     ssl_certificate /etc/letsencrypt/live/wemeweb.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/wemeweb.com/privkey.pem;
 
-    error_log  /var/log/nginx/wemeweb.com/error.log;
-    access_log /var/log/nginx/wemeweb.com/access.log;
-    
-    # Gzip
-    include /etc/nginx/includes/gzip.conf;
+    error_log  /var/log/nginx/wemeweb.com/sites-error.log;
+    access_log /var/log/nginx/wemeweb.com/sites-access.log;
 
-    # redirect server error pages to the static page /50x.html
-    #
-    error_page   500 502 503 504  /50x.html;
-    location = /50x.html {
-        root   /usr/share/nginx/html;
-    }
-
-    location / {  
-
-
-        proxy_pass http://localhost:5678;
+    # CORS is answered by the agent itself
+    location / {
+        proxy_pass http://127.0.0.1:3010;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_buffering off;
-        proxy_cache off;
-        chunked_transfer_encoding off;
-        proxy_read_timeout 3600;
-        proxy_send_timeout 3600;
-
-
-        #   expires $expires;
-
-        #   # Set the proxy pass to the n8n application
-        #   proxy_pass                          http://localhost:5678;
-
-        #   proxy_http_version 1.1;
-        #   proxy_set_header Upgrade $http_upgrade;
-        #   proxy_set_header Connection 'upgrade';
-        #   proxy_set_header Host n8n.wemeweb.com;
-        #   proxy_set_header Origin https://n8n.wemeweb.com;
-        #   proxy_cache_bypass $http_upgrade;
-        #   proxy_ssl off;
-        #   proxy_ssl_verify off;
-
-
-        # # Allow cors
-        # add_header Access-Control-Allow-Origin *;
-        # add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
-        # add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
-        # add_header Access-Control-Allow-Credentials true;
-
-          
-
-
-
-
-
-
-      }
-
-}
-
-# Portainer
-server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
-
-    server_name portainer.wemeweb.com;
-
-    client_max_body_size 50m;
-
-    charset utf-8;
-
-    ssl_certificate /etc/letsencrypt/live/wemeweb.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/wemeweb.com/privkey.pem;
-
-    error_log  /var/log/nginx/portainer.wemeweb.com/error.log;
-    access_log /var/log/nginx/portainer.wemeweb.com/access.log;
-
-    # Gzip
-    include /etc/nginx/includes/gzip.conf;
-
-    
-
-    location / {  
-        expires $expires;
-
-        proxy_redirect                      off;
-        proxy_set_header Host               $host;
-        proxy_set_header X-Real-IP          $remote_addr;
-        proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto  $scheme;
-        proxy_read_timeout                  1m;
-        proxy_connect_timeout               1m;
-
-        # Set the address to Node.js, which `node:3000` is a service name and port from `docker-compose.yml`
-        proxy_pass                          https://localhost:9443;
-
-        # WebSocket support
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-
-# Wiz Shopping
-server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
-
-    server_name wiz.wemeweb.com;
-
-    client_max_body_size 50m;
-
-    charset utf-8;
-
-    # root /var/www/wiz.shopping/current/.output/public;
-
-    ssl_certificate /etc/letsencrypt/live/wemeweb.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/wemeweb.com/privkey.pem;
-		
-    error_log  /var/log/nginx/wiz.shopping/error.log;
-    access_log /var/log/nginx/wiz.shopping/access.log;
-
-    # Gzip
-    include /etc/nginx/includes/gzip.conf;
-
-    
-
-    location / {  
-        expires $expires;
-
-        proxy_redirect                      off;
-        proxy_set_header Host               $host;
-        proxy_set_header X-Real-IP          $remote_addr;
-        proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto  $scheme;
-        proxy_read_timeout                  1m;
-        proxy_connect_timeout               1m;
-
-        # Set the address to Node.js, which `node:3000` is a service name and port from `docker-compose.yml`
-        proxy_pass                          http://localhost:3000;
+        proxy_request_buffering off;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
     }
 }
 
@@ -315,50 +187,6 @@ server {
         proxy_set_header Connection "upgrade";
         proxy_pass https://$rura_upstream_host;
         proxy_ssl_server_name on;
-    }
-}
-
-# Dozzle
-server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
-
-    server_name dozzle.wemeweb.com;
-
-    client_max_body_size 50m;
-
-    charset utf-8;
-
-    ssl_certificate /etc/letsencrypt/live/wemeweb.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/wemeweb.com/privkey.pem;
-
-    error_log  /var/log/nginx/dozzle.wemeweb.com/error.log;
-    access_log /var/log/nginx/dozzle.wemeweb.com/access.log;
-
-    # Gzip
-    include /etc/nginx/includes/gzip.conf;
-
-    
-
-    location / {  
-        expires $expires;
-
-        proxy_redirect                      off;
-        proxy_set_header Host               $host;
-        proxy_set_header X-Real-IP          $remote_addr;
-        proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto  $scheme;
-        proxy_read_timeout                  1m;
-        proxy_connect_timeout               1m;
-
-        # Set the address to service and port from `docker-compose.yml`
-        proxy_pass                          http://localhost:7788;
-
-        # WebSocket support
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
     }
 }
 
@@ -429,41 +257,3 @@ server {
 
 }
 
-# Playda
-server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
-
-    server_name playda.wemeweb.com;
-
-    client_max_body_size 50m;
-
-    charset utf-8;
-
-    ssl_certificate /etc/letsencrypt/live/wemeweb.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/wemeweb.com/privkey.pem;
-
-    error_log  /var/log/nginx/wemeweb.com/playda-error.log;
-    access_log /var/log/nginx/wemeweb.com/playda-access.log;
-
-    # Gzip
-    include /etc/nginx/includes/gzip.conf;
-
-    
-
-    location / {  
-        expires $expires;
-
-        proxy_redirect                      off;
-        proxy_set_header Host               $host;
-        proxy_set_header X-Real-IP          $remote_addr;
-        proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto  $scheme;
-        proxy_read_timeout                  1m;
-        proxy_connect_timeout               1m;
-
-        # Set the address to Node.js, which `node:3001` is a service name and port from `docker-compose.yml`
-        proxy_pass                          http://localhost:3001;
-    }
-}
