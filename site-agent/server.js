@@ -4,6 +4,7 @@
 
 import { createApp } from './lib/app.js';
 import { createRuraAuth } from './lib/auth.js';
+import { createDescriptions } from './lib/descriptions.js';
 import { createNginxManager, systemNginx } from './lib/nginx.js';
 import { DEFAULT_RESERVED, createSiteManager } from './lib/sites.js';
 
@@ -29,6 +30,10 @@ const sites = createSiteManager({
   extraReserved: () => apps.definedNames()
 });
 
+const descriptions = createDescriptions({
+  file: process.env.DESCRIPTIONS_FILE ?? new URL('./descriptions.json', import.meta.url).pathname
+});
+
 const authenticate = createRuraAuth({
   url: process.env.RURA_GRAPHQL_URL ?? 'https://api.wemeweb.com/graphql',
   allowedAdminIds: adminIds
@@ -37,6 +42,7 @@ const authenticate = createRuraAuth({
 const app = createApp({
   sites,
   apps,
+  descriptions,
   authenticate,
   allowedOrigins: list(process.env.ALLOWED_ORIGINS ?? 'https://backoffice.wemeweb.com'),
   maxUploadBytes: Number(process.env.MAX_UPLOAD_MB ?? 100) * 1024 * 1024

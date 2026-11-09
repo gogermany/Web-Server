@@ -53,7 +53,7 @@ function audit(admin, action, detail) {
   console.log(JSON.stringify({ at: new Date().toISOString(), admin: admin.username ?? admin._id, action, ...detail }));
 }
 
-export function createApp({ sites, apps, authenticate, allowedOrigins = [], maxUploadBytes = 100 * 1024 * 1024 }) {
+export function createApp({ sites, apps, descriptions, authenticate, allowedOrigins = [], maxUploadBytes = 100 * 1024 * 1024 }) {
   const origins = new Set(allowedOrigins);
 
   function cors(req, res) {
@@ -85,6 +85,19 @@ export function createApp({ sites, apps, authenticate, allowedOrigins = [], maxU
       }
     }
 
+    // Notes shown next to each subdomain
+    if (descriptions && pathname === '/descriptions' && method === 'GET') {
+      return send(res, 200, { descriptions: await descriptions.list() });
+    }
+    const note = descriptions && /^\/descriptions\/([^/]+)$/.exec(pathname);
+    if (note && method === 'PUT') {
+      const name = decodeURIComponent(note[1]);
+      const { description } = await readJson(req);
+      const saved = await descriptions.set(name, description);
+      audit(admin, 'description.set', { name: saved.name });
+      return send(res, 200, saved);
+    }
+
     const content = /^\/sites\/([^/]+)\/content$/.exec(pathname);
     if (content && method === 'PUT') {
       const dir = await mkdtemp(path.join(tmpdir(), 'wmw-deploy-'));
@@ -103,6 +116,7 @@ export function createApp({ sites, apps, authenticate, allowedOrigins = [], maxU
     const one = /^\/sites\/([^/]+)$/.exec(pathname);
     if (one && method === 'DELETE') {
       await sites.remove(decodeURIComponent(one[1]));
+      await descriptions?.remove(decodeURIComponent(one[1]));
       audit(admin, 'site.delete', { name: decodeURIComponent(one[1]) });
       return send(res, 200, { ok: true });
     }
@@ -128,6 +142,7 @@ export function createApp({ sites, apps, authenticate, allowedOrigins = [], maxU
     if (oneApp && method === 'DELETE') {
       const name = decodeURIComponent(oneApp[1]);
       await apps.remove(name);
+      await descriptions?.remove(name);
       audit(admin, 'app.delete', { name });
       return send(res, 200, { ok: true });
     }

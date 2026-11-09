@@ -9,6 +9,8 @@ Small API (no dependencies, Node 20.12+) that the BackOffice **Sites** page uses
 | `POST /sites` `{ "name": "blog" }` | Creates `blog.wemeweb.com` with a placeholder page |
 | `PUT /sites/:name/content` | Body: a zip (needs `index.html`), or one page sent as `Content-Type: text/html`, saved as `index.html`. Replaces the site |
 | `DELETE /sites/:name` | Moves the folder to `/var/www/.trash/` |
+| `GET /descriptions` | The short note of each subdomain: `{ descriptions: { blog: "…" } }` |
+| `PUT /descriptions/:name` `{ "description": "…" }` | Saves a note (max 200 characters, one line of text); empty removes it. Works for sites, apps and system subdomains |
 | `GET /apps` | Subdomains nginx proxies to a port: `proxy` (managed here) and `system` (hand-written in the main file, read only) |
 | `POST /apps` `{ name, port, scheme?, websocket?, streaming?, maxBodyMb? }` | Adds an app |
 | `PUT /apps/:name` | Changes an app's settings (the name is fixed) |
@@ -27,6 +29,10 @@ If nginx refuses at step 2 or 3, the previous file is put back and the API answe
 The agent needs passwordless `sudo` for those two commands (the `ubuntu` user has it on this server). A subdomain is either a static site or an app, never both. Names that nginx already answers for (any block in the main file, any app) cannot be reused, and an app cannot take the name of an existing static site (delete the site first).
 
 `playda`, `wiz`, `dozzle`, `portainer` and `n8n` were moved out of `wemeweb.com` into `managed/` on 2026-11-08. `api`, `storage`, `igupload`, `sites`, the apex and the wildcard stay in the main file because they need hand-written settings (CORS, a Rura upstream, an `alias`). The BackOffice shows them as System.
+
+## Descriptions
+
+Notes live in `site-agent/descriptions.json` (git-ignored, path set by `DESCRIPTIONS_FILE`), not in the nginx files, so changing one never reloads nginx. A note is deleted with its site or app.
 
 ## Safety rules
 

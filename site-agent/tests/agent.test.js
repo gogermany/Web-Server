@@ -7,6 +7,7 @@ import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import { createApp } from '../lib/app.js';
 import { createRuraAuth } from '../lib/auth.js';
+import { createDescriptions } from '../lib/descriptions.js';
 import { createSiteManager } from '../lib/sites.js';
 
 const ORIGIN = 'https://backoffice.test';
@@ -31,6 +32,7 @@ before(async () => {
 
   agent = createApp({
     sites: createSiteManager({ root }),
+    descriptions: createDescriptions({ file: path.join(tmp, 'data', 'descriptions.json') }),
     authenticate: createRuraAuth({ url: `http://127.0.0.1:${ruraPort}/graphql`, allowedAdminIds: ['a1'] }),
     allowedOrigins: [ORIGIN],
     maxUploadBytes: 1024 * 1024
@@ -267,5 +269,46 @@ describe('deleting', () => {
   it('refuses reserved names and traversal', async () => {
     assert.equal((await call('DELETE', '/sites/api')).status, 403);
     assert.equal((await call('DELETE', '/sites/..%2F..%2Fetc')).status, 422);
+  });
+});
+
+describe('descriptions', () => {
+  const put = (name, body, token = 'good') =>
+    call('PUT', `/descriptions/${name}`, { token, body: JSON.stringify(body), headers: { 'content-type': 'application/json' } });
+
+  it('needs a login', async () => {
+    assert.equal((await call('GET', '/descriptions', { token: null })).status, 401);
+    assert.equal((await put('blog', { description: 'x' }, 'other')).status, 403);
+  });
+
+  it('starts empty, then saves and lists a note', async () => {
+    assert.deepEqual((await call('GET', '/descriptions')).json.descriptions, {});
+    const res = await put('Blog', { description: '  My blog  ' });
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.json, { name: 'blog', description: 'My blog' });
+    assert.deepEqual((await call('GET', '/descriptions')).json.descriptions, { blog: 'My blog' });
+  });
+
+  it('turns line breaks and control characters into spaces', async () => {
+    await put('blog', { description: 'one\ntwo\u0000three' });
+    assert.equal((await call('GET', '/descriptions')).json.descriptions.blog, 'one two three');
+  });
+
+  it('removes the note when it is emptied', async () => {
+    await put('blog', { description: '' });
+    assert.deepEqual((await call('GET', '/descriptions')).json.descriptions, {});
+  });
+
+  it('rejects a bad name, a long text and a non-text value', async () => {
+    assert.equal((await put('a.b', { description: 'x' })).status, 422);
+    assert.equal((await put('blog', { description: 'x'.repeat(201) })).status, 400);
+    assert.equal((await put('blog', { description: 42 })).status, 400);
+  });
+
+  it('is dropped when the site is deleted', async () => {
+    await create('notes');
+    await put('notes', { description: 'to be removed' });
+    assert.equal((await call('DELETE', '/sites/notes')).status, 200);
+    assert.equal((await call('GET', '/descriptions')).json.descriptions.notes, undefined);
   });
 });
