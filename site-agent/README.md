@@ -7,7 +7,7 @@ Small API (no dependencies, Node 20.12+) that the BackOffice **Sites** page uses
 | `GET /health` | `{ ok: true }`, no login (for monitoring) |
 | `GET /sites` | Lists the sites (`live`, `placeholder` or `empty`; `reserved` for other services) |
 | `POST /sites` `{ "name": "blog" }` | Creates `blog.wemeweb.com` with a placeholder page |
-| `PUT /sites/:name/content` | Body: a zip. Replaces the site (needs `index.html`) |
+| `PUT /sites/:name/content` | Body: a zip (needs `index.html`), or one page sent as `Content-Type: text/html`, saved as `index.html`. Replaces the site |
 | `DELETE /sites/:name` | Moves the folder to `/var/www/.trash/` |
 | `GET /apps` | Subdomains nginx proxies to a port: `proxy` (managed here) and `system` (hand-written in the main file, read only) |
 | `POST /apps` `{ name, port, scheme?, websocket?, streaming?, maxBodyMb? }` | Adds an app |

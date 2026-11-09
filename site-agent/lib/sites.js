@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdir, open, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, open, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
@@ -207,34 +207,41 @@ export function createSiteManager({
   /**
    * Replaces `current` with the contents of a zip. The archive is unpacked next to the live folder
    * and swapped in with a rename; the old version stays in `.previous` for one-step rollback.
+   * With `{ html: true }` the file is a single page, which becomes the site's `index.html`.
    */
-  async function deploy(input, zipPath) {
+  async function deploy(input, zipPath, { html = false } = {}) {
     const name = parseName(input);
     await assertManageable(name);
     return withLock(name, async () => {
       const siteDir = dirOf(name);
       if (!(await exists(siteDir))) throw new SiteError(404, `${hostOf(name)} does not exist.`);
 
-      let totals;
-      try {
-        totals = (await run('unzip', ['-Z', '-t', zipPath], { timeout: 30000 })).stdout;
-      } catch {
-        throw new SiteError(422, 'This is not a valid zip file.');
-      }
-      const match = totals.match(/(\d+) files?, (\d+) bytes uncompressed/);
-      if (!match) throw new SiteError(422, 'This is not a valid zip file.');
-      if (Number(match[1]) > maxFiles) throw new SiteError(413, `The archive has more than ${maxFiles} files.`);
-      if (Number(match[2]) > maxUnzippedBytes) {
-        throw new SiteError(413, `The archive is larger than ${Math.round(maxUnzippedBytes / 1024 / 1024)} MB unpacked.`);
+      if (!html) {
+        let totals;
+        try {
+          totals = (await run('unzip', ['-Z', '-t', zipPath], { timeout: 30000 })).stdout;
+        } catch {
+          throw new SiteError(422, 'This is not a valid zip file.');
+        }
+        const match = totals.match(/(\d+) files?, (\d+) bytes uncompressed/);
+        if (!match) throw new SiteError(422, 'This is not a valid zip file.');
+        if (Number(match[1]) > maxFiles) throw new SiteError(413, `The archive has more than ${maxFiles} files.`);
+        if (Number(match[2]) > maxUnzippedBytes) {
+          throw new SiteError(413, `The archive is larger than ${Math.round(maxUnzippedBytes / 1024 / 1024)} MB unpacked.`);
+        }
       }
 
       const incoming = path.join(siteDir, `.incoming-${randomBytes(6).toString('hex')}`);
       await mkdir(incoming);
       try {
-        try {
-          await run('unzip', ['-q', '-o', zipPath, '-d', incoming], { timeout: 60000 });
-        } catch {
-          throw new SiteError(422, 'The zip file could not be unpacked.');
+        if (html) {
+          await copyFile(zipPath, path.join(incoming, 'index.html'));
+        } else {
+          try {
+            await run('unzip', ['-q', '-o', zipPath, '-d', incoming], { timeout: 60000 });
+          } catch {
+            throw new SiteError(422, 'The zip file could not be unpacked.');
+          }
         }
 
         const pruned = await sanitizeTree(incoming);

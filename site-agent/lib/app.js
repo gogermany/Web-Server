@@ -90,8 +90,10 @@ export function createApp({ sites, apps, authenticate, allowedOrigins = [], maxU
       const dir = await mkdtemp(path.join(tmpdir(), 'wmw-deploy-'));
       try {
         const zip = await saveUpload(req, dir, maxUploadBytes);
-        const site = await sites.deploy(decodeURIComponent(content[1]), zip);
-        audit(admin, 'site.deploy', { name: site.name });
+        // A single page is sent as text/html; anything else must be a zip
+        const html = /^text\/html\b/i.test(req.headers['content-type'] ?? '');
+        const site = await sites.deploy(decodeURIComponent(content[1]), zip, { html });
+        audit(admin, 'site.deploy', { name: site.name, html });
         return send(res, 200, { site });
       } finally {
         await rm(dir, { recursive: true, force: true });

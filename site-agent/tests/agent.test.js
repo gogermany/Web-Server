@@ -194,6 +194,21 @@ describe('deploying', () => {
     assert.equal((await upload('blog', file)).status, 422);
   });
 
+  it('accepts a single HTML file and serves it as index.html', async () => {
+    const res = await call('PUT', '/sites/blog/content', { body: '<h1>one page</h1>', headers: { 'content-type': 'text/html' } });
+    assert.equal(res.status, 200);
+    assert.equal(res.json.site.status, 'live');
+    assert.equal(readFileSync(path.join(root, 'blog.wemeweb.com/current/index.html'), 'utf8'), '<h1>one page</h1>');
+    assert.deepEqual(readdirSync(path.join(root, 'blog.wemeweb.com/current')), ['index.html']);
+  });
+
+  it('treats a non-zip body without text/html as a bad zip and keeps the live site', async () => {
+    await call('PUT', '/sites/blog/content', { body: '<h1>stable</h1>', headers: { 'content-type': 'text/html' } });
+    const res = await call('PUT', '/sites/blog/content', { body: '<h1>not a zip</h1>', headers: { 'content-type': 'application/zip' } });
+    assert.equal(res.status, 422);
+    assert.equal(readFileSync(path.join(root, 'blog.wemeweb.com/current/index.html'), 'utf8'), '<h1>stable</h1>');
+  });
+
   it('rejects an empty upload', async () => {
     assert.equal((await call('PUT', '/sites/blog/content', { body: '' })).status, 400);
   });
