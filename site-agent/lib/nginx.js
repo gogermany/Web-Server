@@ -127,6 +127,8 @@ export function createNginxManager({
   mainFile,
   domain = DOMAIN,
   blockedPorts = [],
+  // Names that are already used by something else, e.g. a static site (read when needed)
+  extraTaken = async () => [],
   validate,
   reload,
   renderOptions = {}
@@ -231,6 +233,9 @@ export function createNginxManager({
       const settings = parseSettings(input, { blockedPorts });
       if (ALWAYS_BLOCKED.includes(name) || (await definedNames()).has(name)) {
         throw new SiteError(409, `${name}${suffix} is already used.`);
+      }
+      if ((await extraTaken()).includes(name)) {
+        throw new SiteError(409, `${name}${suffix} is already a static site. Delete it first, or pick another name.`);
       }
       await apply(name, renderApp(name, settings, { domain, ...renderOptions }));
       return find(name);

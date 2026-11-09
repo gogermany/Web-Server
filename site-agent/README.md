@@ -24,7 +24,7 @@ Every change goes through the same steps, one at a time:
 
 If nginx refuses at step 2 or 3, the previous file is put back and the API answers with nginx's error; nothing goes live. A reload returns before the new workers take over, so a change can take a moment to show. Each change is logged in PM2 with the admin's name (`app.create`, `app.update`, `app.delete`).
 
-The agent needs passwordless `sudo` for those two commands (the `ubuntu` user has it on this server). Names that nginx already answers for (any block in the main file, any app) cannot be reused, for apps or for static sites.
+The agent needs passwordless `sudo` for those two commands (the `ubuntu` user has it on this server). A subdomain is either a static site or an app, never both. Names that nginx already answers for (any block in the main file, any app) cannot be reused, and an app cannot take the name of an existing static site (delete the site first).
 
 `playda`, `wiz`, `dozzle`, `portainer` and `n8n` were moved out of `wemeweb.com` into `managed/` on 2026-11-08. `api`, `storage`, `igupload`, `sites`, the apex and the wildcard stay in the main file because they need hand-written settings (CORS, a Rura upstream, an `alias`). The BackOffice shows them as System.
 

@@ -255,6 +255,19 @@ describe('with the static sites and the HTTP API', () => {
     assert.equal((await api('POST', '/sites', { name: 'blog' })).status, 403);
   });
 
+  it('stops an app from taking the name of a static site', async () => {
+    const sitesManager = createSiteManager({ root: www, extraReserved: () => manager.definedNames() });
+    const withSites = createNginxManager({
+      managedDir, mainFile, validate: fakeValidate, reload: fakeReload,
+      extraTaken: async () => (await sitesManager.list()).filter((site) => !site.reserved).map((site) => site.name)
+    });
+    await sitesManager.create('shop');
+    await assert.rejects(withSites.create({ name: 'shop', ...settings }), (e) => e.status === 409 && /static site/.test(e.message));
+    assert.equal(existsSync(file('shop')), false);
+    await sitesManager.remove('shop');
+    assert.equal((await withSites.create({ name: 'shop', ...settings })).kind, 'proxy');
+  });
+
   it('allows a static site once the app is removed', async () => {
     await api('POST', '/apps', { name: 'blog', ...settings });
     await api('DELETE', '/apps/blog');

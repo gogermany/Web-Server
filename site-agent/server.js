@@ -17,6 +17,8 @@ const apps = createNginxManager({
   managedDir: process.env.MANAGED_DIR ?? '/etc/nginx/sites-available/managed',
   mainFile: process.env.NGINX_MAIN_FILE ?? '/etc/nginx/sites-available/wemeweb.com',
   blockedPorts: list(process.env.BLOCKED_PORTS ?? '2376,3010').map(Number),
+  // A name is a static site or an app, never both: `sites` is created just below
+  extraTaken: async () => (await sites.list()).filter((site) => !site.reserved).map((site) => site.name),
   ...systemNginx()
 });
 
